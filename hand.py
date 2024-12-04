@@ -1,65 +1,133 @@
-import cv2
-import mediapipe as mp
-import numpy as np
-import pyttsx3
+from multiprocessing.connection import Listener
+import pyttsx3  # pip install pyttsx3
+import speech_recognition as sr  # pip install speechRecognition
+import datetime
+import wikipedia  # pip install wikipedia
+import webbrowser
+import os
+import smtplib
+import pyjokes  # pip install jokes
 
-# Initialize the MediaPipe Hands class
-mp_hands = mp.solutions.hands
-hands = mp_hands.Hands(min_detection_confidence=0.7, min_tracking_confidence=0.7)
-mp_draw = mp.solutions.drawing_utils  # For drawing hand landmarks on the image
 
-# Initialize OpenCV for video capture
-cap = cv2.VideoCapture(0)
+Listener = sr.Recognizer()
+engine = pyttsx3.init("sapi5")
+voices = engine.getProperty("voices")
+# print(voices[1].id)
+engine.setProperty("voice", voices[0].id)
 
-# Initialize text-to-speech engine (optional)
-engine = pyttsx3.init()
 
-# Function to determine if hand is raised (gesture to say "Hi")
-def is_hand_raised(landmarks, height, width):
-    # Check if the y-coordinate of the tip of the middle finger is higher than a threshold (e.g., above the middle of the image)
-    middle_finger_tip_y = landmarks[9].y * height
-    palm_base_y = landmarks[0].y * height  # Palm base (wrist) position
+def speak(audio):
+    engine.say(audio)
+    engine.runAndWait()
 
-    # A simple heuristic: If the middle finger tip is significantly above the wrist
-    if middle_finger_tip_y < palm_base_y - height * 0.2:  # Check if hand is raised
-        return True
-    return False
 
-# Main loop for processing video frames
+def wishMe():
+    hour = int(datetime.datetime.now().hour)
+    if hour >= 0 and hour < 12:
+        speak("Good Morning!")
+
+    elif hour >= 12 and hour < 18:
+        speak("Good Afternoon!")
+
+    else:
+        speak("Good Evening!")
+
+    speak("jarvis here at your service sir.How may I help you")
+
+
+def takeCommand():
+    # It takes microphone input from the user and returns string output
+
+    r = sr.Recognizer()
+    with sr.Microphone() as source:
+        print("Listening...")
+        r.pause_threshold = 1
+        audio = r.listen(source)
+
+    try:
+        print("Recognizing...")
+        query = r.recognize_google(audio, language="en-in")
+        print(f"User said: {query}\n")
+
+    except Exception as e:
+        # print(e)
+        print("could you please repeat it sir...")
+        return "None"
+    return query
+
+
+def sendEmail(to, content):
+    server = smtplib.SMTP("smtp.gmail.com", 587)
+    server.ehlo()
+    server.starttls()
+    server.login("youremail@gmail.com", "your-password")
+    server.sendmail("youremail@gmail.com", to, content)
+    server.close()
+
+
+if __name__ == "__main__":
+    wishMe()
+    while True:
+        # if 1:
+        query = takeCommand().lower()
+
+        # Logic for executing tasks based on query
+        if "wikipedia" in query:
+            speak("Searching Wikipedia...")
+            query = query.replace("wikipedia", "")
+            results = wikipedia.summary(query, sentences=2)
+            speak("According to Wikipedia")
+            print(results)
+            speak(results)
+
+        elif "open youtube" in query:
+            webbrowser.open("youtube.com")
+            speak("iam opening Youtube for  you")
+
+        elif "open google" in query:
+            webbrowser.open("google.com")
+            speak("iam opening google for you")
+
+        elif "open stackoverflow" in query:
+            webbrowser.open("stackoverflow.com")
+
+        elif "play music" in query:
+            music_dir = "D:\\Non Critical\\songs\\Favorite Songs2"
+            songs = os.listdir(music_dir)
+            print(songs)
+            os.startfile(os.path.join(music_dir, songs[0]))
+
+        elif "the time" in query:
+            strTime = datetime.datetime.now().strftime("%H:%M:%S")
+            speak(f"Sir, the time is {strTime}")
+
+        elif "open code" in query:
+            codePath = "C:\\Users\\your desktop\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe"
+            os.startfile(codePath)
+
+        elif "email to dev" in query:
+            try:
+                speak("What should I say sir ?")
+                content = takeCommand()
+                to = "yourmail@gmail.com"
+                sendEmail(to, content)
+                speak("Email has been sent sir!")
+            except Exception as e:
+                print(e)
+                speak("Sorry boss. I am not able to send this email")
+        elif "are you single" in query:
+            speak("I am in a relationship with someone you know who is she")
+
+        elif "joke" in query:
+            speak(pyjokes.get_joke())
+        elif "open google" in query:
+            webbrowser.open("google.com")
+            speak("iam opening google for you")
+
+
+    else:
+        speak("Please say the command again sir.")
+
+
 while True:
-    success, img = cap.read()  # Capture frame-by-frame from the webcam
-    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert the image to RGB format (required by MediaPipe)
-    
-    # Process the frame to detect hands
-    result = hands.process(img_rgb)
-
-    height, width, _ = img.shape  # Get the dimensions of the video frame
-    
-    # Check if hand landmarks are detected
-    if result.multi_hand_landmarks:
-        for hand_landmarks in result.multi_hand_landmarks:
-            # Draw landmarks on the hand
-            mp_draw.draw_landmarks(img, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-
-            # Convert the landmarks to pixel values
-            landmarks = hand_landmarks.landmark
-
-            # Check if the hand is raised
-            if is_hand_raised(landmarks, height, width):
-                # Display "Hi" on the screen
-                cv2.putText(img, "Hi!", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 3)
-                
-                # Optionally say "Hi" using text-to-speech
-                engine.say("Hi")
-                engine.runAndWait()
-
-    # Display the result
-    cv2.imshow('Hand Gesture Recognition', img)
-
-    # Break the loop if 'q' is pressed
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-# Release the webcam and close windows
-cap.release()
-cv2.destroyAllWindows()
+    jarvis()
